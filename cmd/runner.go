@@ -10,9 +10,9 @@ import (
 
 	"github.com/labstack/echo/v5"
 
-	"github.com/davidullrich/mailgraph/internal/collector"
-	"github.com/davidullrich/mailgraph/internal/config"
-	"github.com/davidullrich/mailgraph/internal/web"
+	"mailgraph/internal/collector"
+	"mailgraph/internal/config"
+	"mailgraph/internal/web"
 )
 
 func daemonize(cfg config.Config) error {

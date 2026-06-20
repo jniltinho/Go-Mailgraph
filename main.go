@@ -1,6 +1,7 @@
+// Command mailgraph is an RRDtool-based mail statistics grapher for Postfix and other MTAs.
 package main
 
-import "github.com/davidullrich/mailgraph/cmd"
+import "mailgraph/cmd"
 
 func main() {
 	cmd.Execute()

@@ -1,3 +1,7 @@
+// Package config loads and validates mailgraph runtime settings from Viper.
+//
+// Settings are resolved in order: CLI flags, MAILGRAPH_* environment variables,
+// config.toml, then built-in defaults.
 package config
 
 import (
@@ -8,36 +12,65 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Config holds runtime settings for the collector and HTTP server.
 type Config struct {
-	LogFile         string
-	LogType         string
-	Year            int
-	HostFilter      string
-	RRDDir          string
-	PIDFile         string
-	DaemonLogFile   string
-	RRDName         string
+	// LogFile is the mail log file path to read or tail.
+	LogFile string
+	// LogType is the log format: "syslog" or "metalog".
+	LogType string
+	// Year is the starting calendar year when parsing logs without a year field.
+	Year int
+	// HostFilter is an optional regexp restricting syslog hostnames.
+	HostFilter string
+	// RRDDir is the directory where RRD database files are stored.
+	RRDDir string
+	// PIDFile is written when daemon mode is enabled.
+	PIDFile string
+	// DaemonLogFile receives verbose daemon output when configured.
+	DaemonLogFile string
+	// RRDName is the base filename for RRD files (e.g. mailgraph.rrd).
+	RRDName string
+	// IgnoreLocalhost skips mail to or from 127.0.0.1.
 	IgnoreLocalhost bool
-	IgnoreHosts     []string
-	OnlyMailRRD     bool
-	OnlyVirusRRD    bool
-	RBLIsSpam       bool
-	VirblIsVirus    bool
-	Daemon          bool
-	Cat             bool
-	Verbose         bool
-	Serve           bool
-	ListenAddr      string
-	Hostname        string
-	TLSEnabled      bool
-	TLSCertFile     string
-	TLSKeyFile      string
-	AuthEnabled     bool
-	AuthUsername    string
-	AuthPassword    string
-	AuthRealm       string
+	// IgnoreHosts lists relay host regexes to ignore.
+	IgnoreHosts []string
+	// OnlyMailRRD updates only the main mail RRD.
+	OnlyMailRRD bool
+	// OnlyVirusRRD updates only virus and spam RRDs.
+	OnlyVirusRRD bool
+	// RBLIsSpam counts RBL rejections as spam events.
+	RBLIsSpam bool
+	// VirblIsVirus counts VIRBL rejections as virus events.
+	VirblIsVirus bool
+	// Daemon writes a PID file and detaches when true.
+	Daemon bool
+	// Cat processes the log once and exits without serving HTTP.
+	Cat bool
+	// Verbose enables detailed logging.
+	Verbose bool
+	// Serve starts the HTTP server when true.
+	Serve bool
+	// ListenAddr is the HTTP or HTTPS listen address (e.g. ":8080").
+	ListenAddr string
+	// Hostname is shown in graph titles.
+	Hostname string
+	// TLSEnabled serves HTTPS using TLSCertFile and TLSKeyFile.
+	TLSEnabled bool
+	// TLSCertFile is the PEM certificate path for TLS.
+	TLSCertFile string
+	// TLSKeyFile is the PEM private key path for TLS.
+	TLSKeyFile string
+	// AuthEnabled protects the web UI with HTTP Basic authentication.
+	AuthEnabled bool
+	// AuthUsername is the Basic Auth username.
+	AuthUsername string
+	// AuthPassword is the Basic Auth password.
+	AuthPassword string
+	// AuthRealm is the Basic Auth realm shown by browsers.
+	AuthRealm string
 }
 
+// Default returns the built-in configuration defaults.
 func Default() Config {
 	hostname, _ := os.Hostname()
 	return Config{
@@ -55,6 +88,7 @@ func Default() Config {
 	}
 }
 
+// SetDefaults registers default values with the global Viper instance.
 func SetDefaults() {
 	d := Default()
 	viper.SetDefault("log.file", d.LogFile)
@@ -85,6 +119,7 @@ func SetDefaults() {
 	viper.SetDefault("app.verbose", d.Verbose)
 }
 
+// Load reads the effective configuration from Viper and validates it.
 func Load() (Config, error) {
 	cfg := Default()
 

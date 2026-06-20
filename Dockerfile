@@ -18,9 +18,9 @@ COPY . .
 RUN BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) && \
     CGO_ENABLED=0 go build -trimpath \
     -ldflags "-s -w \
-    -X github.com/davidullrich/mailgraph/internal/buildinfo.Version=${VERSION} \
-    -X github.com/davidullrich/mailgraph/internal/buildinfo.BuildDate=${BUILD_DATE} \
-    -X github.com/davidullrich/mailgraph/internal/buildinfo.GitCommit=${GIT_COMMIT}" \
+    -X mailgraph/internal/buildinfo.Version=${VERSION} \
+    -X mailgraph/internal/buildinfo.BuildDate=${BUILD_DATE} \
+    -X mailgraph/internal/buildinfo.GitCommit=${GIT_COMMIT}" \
     -o bin/mailgraph . && \
     upx --best --lzma bin/mailgraph
 

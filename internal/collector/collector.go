@@ -1,3 +1,4 @@
+// Package collector tails mail logs, parses MTA events, and updates RRD files.
 package collector
 
 import (
@@ -7,12 +8,13 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/davidullrich/mailgraph/internal/config"
-	"github.com/davidullrich/mailgraph/internal/rrd"
-	"github.com/davidullrich/mailgraph/internal/syslog"
+	"mailgraph/internal/config"
+	"mailgraph/internal/rrd"
+	"mailgraph/internal/syslog"
 	"github.com/nxadm/tail"
 )
 
+// Collector processes syslog entries and maintains RRD counters.
 type Collector struct {
 	cfg         config.Config
 	store       *rrd.Store
@@ -23,6 +25,7 @@ type Collector struct {
 	hostFilter  *regexp.Regexp
 }
 
+// New creates a Collector from cfg, compiling host filters as needed.
 func New(cfg config.Config) (*Collector, error) {
 	c := &Collector{cfg: cfg}
 	c.store = rrd.NewStore(cfg.RRDDir, cfg.RRDName, cfg.OnlyMailRRD, cfg.OnlyVirusRRD, cfg.Verbose)
@@ -46,6 +49,7 @@ func New(cfg config.Config) (*Collector, error) {
 	return c, nil
 }
 
+// Run processes the configured log file once (cat mode) or tails it in real time.
 func (c *Collector) Run() error {
 	if err := syslog.ValidateLogType(c.cfg.LogType); err != nil {
 		return err

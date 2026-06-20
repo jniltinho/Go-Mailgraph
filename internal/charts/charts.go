@@ -1,3 +1,4 @@
+// Package charts renders interactive go-echarts graphs from RRD data.
 package charts
 
 import (
@@ -9,9 +10,10 @@ import (
 	"github.com/go-echarts/go-echarts/v2/charts"
 	"github.com/go-echarts/go-echarts/v2/opts"
 
-	"github.com/davidullrich/mailgraph/internal/rrd"
+	"mailgraph/internal/rrd"
 )
 
+// Periods lists the predefined time ranges available on the index page.
 var Periods = []struct {
 	Title   string
 	Seconds int
@@ -26,11 +28,17 @@ var Periods = []struct {
 }
 
 const (
+	// TypeTraffic is the sent/received traffic chart.
 	TypeTraffic = "n"
-	TypeErrors  = "e"
-	TypeSPF     = "s"
-	TypeDMARC   = "d"
-	TypeDKIM    = "k"
+	// TypeErrors is the bounced, rejected, virus, and spam chart.
+	TypeErrors = "e"
+	// TypeSPF is the SPF result chart.
+	TypeSPF = "s"
+	// TypeDMARC is the DMARC result chart.
+	TypeDMARC = "d"
+	// TypeDKIM is the DKIM result chart.
+	TypeDKIM = "k"
+	// TypeDovecot is the Dovecot login chart.
 	TypeDovecot = "v"
 )
 
@@ -54,14 +62,17 @@ var colors = map[string]string{
 	"dovecotloginfailed":  "#006400",
 }
 
+// Generator builds chart HTML fragments from an RRD store.
 type Generator struct {
 	store *rrd.Store
 }
 
+// NewGenerator creates a chart Generator backed by store.
 func NewGenerator(store *rrd.Store) *Generator {
 	return &Generator{store: store}
 }
 
+// Render returns the HTML for the chart identified by period index and chartType.
 func (g *Generator) Render(period int, chartType string) (string, error) {
 	if period < 0 || period >= len(Periods) {
 		return "", fmt.Errorf("invalid period %d", period)

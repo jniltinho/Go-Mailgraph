@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davidullrich/mailgraph/internal/config"
+	"mailgraph/internal/config"
 )
 
 func TestProcessSampleLog(t *testing.T) {

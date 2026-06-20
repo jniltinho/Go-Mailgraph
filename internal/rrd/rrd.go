@@ -1,3 +1,4 @@
+// Package rrd wraps rrdtool create, update, and fetch operations for mail statistics.
 package rrd
 
 import (
@@ -12,11 +13,15 @@ import (
 )
 
 const (
-	Step         = 60
-	XPoints      = 540
+	// Step is the RRD step size in seconds (one-minute buckets).
+	Step = 60
+	// XPoints is the number of points per graph axis sample.
+	XPoints = 540
+	// PointsSample is the downsampling factor for graph rendering.
 	PointsSample = 3
 )
 
+// Store manages mailgraph RRD files in a directory.
 type Store struct {
 	dir       string
 	mailRRD   string
@@ -27,11 +32,13 @@ type Store struct {
 	verbose   bool
 }
 
+// DataPoint is a single RRD fetch sample.
 type DataPoint struct {
 	Timestamp time.Time
 	Values    map[string]float64
 }
 
+// NewStore creates a Store for RRD files named name in dir.
 func NewStore(dir, name string, onlyMail, onlyVirus, verbose bool) *Store {
 	return &Store{
 		dir:        dir,
@@ -44,10 +51,16 @@ func NewStore(dir, name string, onlyMail, onlyVirus, verbose bool) *Store {
 	}
 }
 
-func (s *Store) MailPath() string   { return filepath.Join(s.dir, s.mailRRD) }
-func (s *Store) VirusPath() string  { return filepath.Join(s.dir, s.virusRRD) }
+// MailPath returns the path to the main mail RRD file.
+func (s *Store) MailPath() string { return filepath.Join(s.dir, s.mailRRD) }
+
+// VirusPath returns the path to the virus and spam RRD file.
+func (s *Store) VirusPath() string { return filepath.Join(s.dir, s.virusRRD) }
+
+// DovecotPath returns the path to the Dovecot login RRD file.
 func (s *Store) DovecotPath() string { return filepath.Join(s.dir, s.dovecotRRD) }
 
+// Init creates missing RRD files and returns the next update timestamp.
 func (s *Store) Init(startMinute int64) (int64, error) {
 	if err := os.MkdirAll(s.dir, 0o755); err != nil {
 		return 0, err
@@ -150,10 +163,12 @@ func (s *Store) Init(startMinute int64) (int64, error) {
 	return current, nil
 }
 
+// IsZero reports whether c contains no counted events.
 func (c Counters) IsZero() bool {
 	return c == Counters{}
 }
 
+// Counters holds per-minute mail event totals before flushing to RRD.
 type Counters struct {
 	Sent, Received, Bounced, Rejected                int
 	SPFNone, SPFFail, SPFPass                        int
@@ -163,6 +178,7 @@ type Counters struct {
 	DovecotLoginSuccess, DovecotLoginFailed          int
 }
 
+// Update writes counter values for minute into the RRD files.
 func (s *Store) Update(minute int64, c Counters, fillGaps bool) error {
 	if !s.onlyVirus {
 		value := fmt.Sprintf("%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d",
@@ -203,6 +219,7 @@ func (s *Store) Update(minute int64, c Counters, fillGaps bool) error {
 	return nil
 }
 
+// UpdateGap fills empty minute buckets between from and to with zero values.
 func (s *Store) UpdateGap(from, to int64) error {
 	for sm := from; sm < to; sm += Step {
 		if !s.onlyVirus {
@@ -226,6 +243,7 @@ func (s *Store) UpdateGap(from, to int64) error {
 	return nil
 }
 
+// Fetch returns averaged RRD samples from the last seconds interval.
 func (s *Store) Fetch(path string, seconds int) ([]DataPoint, error) {
 	args := []string{
 		"fetch", path, "AVERAGE",
@@ -313,6 +331,7 @@ func parseFetch(output string) ([]DataPoint, error) {
 	return points, scanner.Err()
 }
 
+// RatePerMinute converts a per-step average to messages per minute.
 func RatePerMinute(v float64) float64 {
 	return v * 60
 }

@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/davidullrich/mailgraph/internal/buildinfo"
+	"mailgraph/internal/buildinfo"
 )
 
 var versionCmd = &cobra.Command{

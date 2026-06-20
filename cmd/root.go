@@ -1,3 +1,4 @@
+// Package cmd implements the mailgraph CLI using Cobra and Viper.
 package cmd
 
 import (
@@ -8,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/davidullrich/mailgraph/internal/config"
+	"mailgraph/internal/config"
 )
 
 var (
@@ -21,6 +22,7 @@ var (
 	cfgFile string
 )
 
+// Execute runs the root command and exits with status 1 on failure.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)

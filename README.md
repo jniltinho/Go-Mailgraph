@@ -256,6 +256,8 @@ mailgraph server \
 - `make`
 - UPX (opcional, para `build-prod` e Docker)
 
+Módulo Go: `mailgraph` (raiz do repositório).
+
 ### Comandos
 
 ```bash

@@ -1,3 +1,4 @@
+// Package syslog parses syslog and metalog formatted mail log lines.
 package syslog
 
 import (
@@ -28,6 +29,7 @@ var (
 	metalogText = regexp.MustCompile(`^\[(.*?)\]\s+(.*)$`)
 )
 
+// Entry is a single parsed log record.
 type Entry struct {
 	Timestamp time.Time
 	Host      string
@@ -36,6 +38,7 @@ type Entry struct {
 	Text      string
 }
 
+// Parser reads and parses syslog or metalog lines from a reader.
 type Parser struct {
 	reader    io.Reader
 	scanner   *bufio.Scanner
@@ -45,6 +48,7 @@ type Parser struct {
 	location  *time.Location
 }
 
+// NewParser creates a Parser for the given log format and starting year.
 func NewParser(r io.Reader, logType string, year int) *Parser {
 	if logType == "" {
 		logType = "syslog"
@@ -64,6 +68,7 @@ func NewParser(r io.Reader, logType string, year int) *Parser {
 	return p
 }
 
+// Next returns the next valid entry from the reader, or io.EOF when done.
 func (p *Parser) Next() (*Entry, error) {
 	switch p.logType {
 	case "metalog":
@@ -73,6 +78,7 @@ func (p *Parser) Next() (*Entry, error) {
 	}
 }
 
+// ParseLine parses a single log line without advancing the reader.
 func (p *Parser) ParseLine(line string) (*Entry, error) {
 	switch p.logType {
 	case "metalog":
@@ -205,6 +211,7 @@ func (p *Parser) adjustYear(mon time.Month) {
 	p.lastMonth = mon
 }
 
+// SetReader replaces the underlying reader and resets the scanner.
 func (p *Parser) SetReader(r io.Reader) {
 	p.reader = r
 	if r != nil {
@@ -212,15 +219,18 @@ func (p *Parser) SetReader(r io.Reader) {
 	}
 }
 
+// ParseLine parses one line using a temporary parser for the given format.
 func ParseLine(logType string, year int, line string) (*Entry, error) {
 	p := NewParser(strings.NewReader(line+"\n"), logType, year)
 	return p.Next()
 }
 
+// FormatTimestamp formats t in the syslog-style layout used by mailgraph.
 func FormatTimestamp(t time.Time) string {
 	return t.Format("Mon Jan 2 15:04:05 2006")
 }
 
+// ValidateLogType reports whether logType is supported.
 func ValidateLogType(logType string) error {
 	switch logType {
 	case "syslog", "metalog":

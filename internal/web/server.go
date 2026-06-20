@@ -1,3 +1,4 @@
+// Package web serves the mailgraph HTML UI and chart endpoints with Echo.
 package web
 
 import (
@@ -12,15 +13,16 @@ import (
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
 
-	"github.com/davidullrich/mailgraph/internal/charts"
-	"github.com/davidullrich/mailgraph/internal/buildinfo"
-	"github.com/davidullrich/mailgraph/internal/config"
-	"github.com/davidullrich/mailgraph/internal/rrd"
+	"mailgraph/internal/charts"
+	"mailgraph/internal/buildinfo"
+	"mailgraph/internal/config"
+	"mailgraph/internal/rrd"
 )
 
 //go:embed static/mailgraph.css
 var mailgraphCSS []byte
 
+// Server handles HTTP routes for the mailgraph dashboard.
 type Server struct {
 	cfg       config.Config
 	store     *rrd.Store
@@ -28,6 +30,7 @@ type Server struct {
 	templates *template.Template
 }
 
+// New creates a Server from cfg.
 func New(cfg config.Config) *Server {
 	store := rrd.NewStore(cfg.RRDDir, cfg.RRDName, cfg.OnlyMailRRD, cfg.OnlyVirusRRD, false)
 	return &Server{
@@ -37,6 +40,7 @@ func New(cfg config.Config) *Server {
 	}
 }
 
+// Register mounts routes on e, including optional Basic Auth middleware.
 func (s *Server) Register(e *echo.Echo) {
 	if s.cfg.AuthEnabled {
 		username := s.cfg.AuthUsername
