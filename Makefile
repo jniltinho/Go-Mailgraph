@@ -8,7 +8,7 @@ UPX_URL      := https://github.com/upx/upx/releases/download/v$(UPX_VERSION)/$(U
 ## Variables for Go application
 APP        := mailgraph
 BIN        := bin/$(APP)
-PKG        := github.com/davidullrich/mailgraph/internal/config
+PKG        := github.com/davidullrich/mailgraph/internal/buildinfo
 VERSION    := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
 BUILD_TIME := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
@@ -25,16 +25,16 @@ all: clean build
 
 build: clean
 	@echo "Building $(APP)..."
-	CGO_ENABLED=0 go build -o $(BIN) $(LDFLAGS) ./cmd/$(APP)
+	CGO_ENABLED=0 go build -o $(BIN) $(LDFLAGS) .
 
 build-prod: clean
 	@echo "Building $(APP) (UPX compressed)..."
-	CGO_ENABLED=0 go build -o $(BIN) $(LDFLAGS) ./cmd/$(APP)
+	CGO_ENABLED=0 go build -o $(BIN) $(LDFLAGS) .
 	upx --best --lzma $(BIN)
 
 run: build
 	@echo "Starting $(APP)..."
-	./$(BIN) \
+	./$(BIN) server \
 		--logfile=/var/log/mail/mail.log \
 		--daemon-rrd=./rrd \
 		--listen=:8080

@@ -1,16 +1,11 @@
 package config
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"time"
-)
 
-var (
-	Version   = "2.0.0"
-	BuildDate = "unknown"
-	GitCommit = "unknown"
+	"github.com/spf13/viper"
 )
 
 type Config struct {
@@ -52,96 +47,77 @@ func Default() Config {
 	}
 }
 
-func Parse() (Config, error) {
+func SetDefaults() {
+	d := Default()
+	viper.SetDefault("log.file", d.LogFile)
+	viper.SetDefault("log.type", d.LogType)
+	viper.SetDefault("log.year", d.Year)
+	viper.SetDefault("log.host_filter", d.HostFilter)
+	viper.SetDefault("rrd.dir", d.RRDDir)
+	viper.SetDefault("rrd.name", d.RRDName)
+	viper.SetDefault("rrd.only_mail", d.OnlyMailRRD)
+	viper.SetDefault("rrd.only_virus", d.OnlyVirusRRD)
+	viper.SetDefault("daemon.pid_file", d.PIDFile)
+	viper.SetDefault("daemon.log_file", d.DaemonLogFile)
+	viper.SetDefault("daemon.enabled", d.Daemon)
+	viper.SetDefault("server.listen", d.ListenAddr)
+	viper.SetDefault("server.hostname", d.Hostname)
+	viper.SetDefault("server.serve", d.Serve)
+	viper.SetDefault("filter.ignore_localhost", d.IgnoreLocalhost)
+	viper.SetDefault("filter.ignore_hosts", d.IgnoreHosts)
+	viper.SetDefault("filter.rbl_is_spam", d.RBLIsSpam)
+	viper.SetDefault("filter.virbl_is_virus", d.VirblIsVirus)
+	viper.SetDefault("app.verbose", d.Verbose)
+}
+
+func Load() (Config, error) {
 	cfg := Default()
 
-	flag.StringVar(&cfg.LogFile, "logfile", cfg.LogFile, "monitor logfile instead of /var/log/syslog")
-	flag.StringVar(&cfg.LogFile, "l", cfg.LogFile, "monitor logfile (short)")
-	flag.StringVar(&cfg.LogType, "logtype", cfg.LogType, "logfile type: syslog or metalog")
-	flag.StringVar(&cfg.LogType, "t", cfg.LogType, "logfile type (short)")
-	flag.IntVar(&cfg.Year, "year", cfg.Year, "starting year of the log file")
-	flag.IntVar(&cfg.Year, "y", cfg.Year, "starting year (short)")
-	flag.StringVar(&cfg.HostFilter, "host", "", "use only entries for HOST (regexp) in syslog")
-	flag.StringVar(&cfg.RRDDir, "daemon-rrd", cfg.RRDDir, "write RRDs to DIR")
-	flag.StringVar(&cfg.PIDFile, "daemon-pid", cfg.PIDFile, "write PID to FILE")
-	flag.StringVar(&cfg.DaemonLogFile, "daemon-log", cfg.DaemonLogFile, "write verbose-log to FILE")
-	flag.StringVar(&cfg.RRDName, "rrd-name", cfg.RRDName, "use NAME.rrd and NAME_virus.rrd")
-	flag.BoolVar(&cfg.IgnoreLocalhost, "ignore-localhost", false, "ignore mail to/from localhost")
-	flag.BoolVar(&cfg.OnlyMailRRD, "only-mail-rrd", false, "update only the mail rrd")
-	flag.BoolVar(&cfg.OnlyVirusRRD, "only-virus-rrd", false, "update only the virus rrd")
-	flag.BoolVar(&cfg.RBLIsSpam, "rbl-is-spam", false, "count rbl rejects as spam")
-	flag.BoolVar(&cfg.VirblIsVirus, "virbl-is-virus", false, "count virbl rejects as viruses")
-	flag.BoolVar(&cfg.Daemon, "daemon", false, "start collector in the background")
-	flag.BoolVar(&cfg.Daemon, "d", false, "start collector in background (short)")
-	flag.BoolVar(&cfg.Cat, "cat", false, "read logfile once and exit")
-	flag.BoolVar(&cfg.Cat, "c", false, "read logfile once (short)")
-	flag.BoolVar(&cfg.Verbose, "verbose", false, "be verbose")
-	flag.BoolVar(&cfg.Verbose, "v", false, "be verbose (short)")
-	flag.BoolVar(&cfg.Serve, "serve", true, "start HTTP server for graphs")
-	flag.StringVar(&cfg.ListenAddr, "listen", cfg.ListenAddr, "HTTP listen address")
-	flag.StringVar(&cfg.Hostname, "hostname", cfg.Hostname, "hostname shown in graph title")
-
-	var help, version bool
-	flag.BoolVar(&help, "help", false, "display help")
-	flag.BoolVar(&help, "h", false, "display help (short)")
-	flag.BoolVar(&version, "version", false, "output version")
-	flag.BoolVar(&version, "V", false, "output version (short)")
-
-	var ignoreHosts multiFlag
-	flag.Var(&ignoreHosts, "ignore-host", "ignore mail to/from HOST regexp (repeatable)")
-
-	flag.Parse()
-
-	if help {
-		printUsage()
-		os.Exit(0)
+	if v := viper.GetString("log.file"); v != "" {
+		cfg.LogFile = v
 	}
-	if version {
-		fmt.Printf("mailgraph %s (Go port) %s %s\n", Version, BuildDate, GitCommit)
-		os.Exit(0)
+	if v := viper.GetString("log.type"); v != "" {
+		cfg.LogType = v
 	}
+	if viper.IsSet("log.year") {
+		cfg.Year = viper.GetInt("log.year")
+	}
+	cfg.HostFilter = viper.GetString("log.host_filter")
 
-	cfg.IgnoreHosts = ignoreHosts
+	if v := viper.GetString("rrd.dir"); v != "" {
+		cfg.RRDDir = v
+	}
+	if v := viper.GetString("rrd.name"); v != "" {
+		cfg.RRDName = v
+	}
+	cfg.OnlyMailRRD = viper.GetBool("rrd.only_mail")
+	cfg.OnlyVirusRRD = viper.GetBool("rrd.only_virus")
+
+	if v := viper.GetString("daemon.pid_file"); v != "" {
+		cfg.PIDFile = v
+	}
+	if v := viper.GetString("daemon.log_file"); v != "" {
+		cfg.DaemonLogFile = v
+	}
+	cfg.Daemon = viper.GetBool("daemon.enabled")
+
+	if v := viper.GetString("server.listen"); v != "" {
+		cfg.ListenAddr = v
+	}
+	if v := viper.GetString("server.hostname"); v != "" {
+		cfg.Hostname = v
+	}
+	cfg.Serve = viper.GetBool("server.serve")
+
+	cfg.IgnoreLocalhost = viper.GetBool("filter.ignore_localhost")
+	cfg.IgnoreHosts = viper.GetStringSlice("filter.ignore_hosts")
+	cfg.RBLIsSpam = viper.GetBool("filter.rbl_is_spam")
+	cfg.VirblIsVirus = viper.GetBool("filter.virbl_is_virus")
+	cfg.Verbose = viper.GetBool("app.verbose")
 
 	if cfg.OnlyMailRRD && cfg.OnlyVirusRRD {
-		return cfg, fmt.Errorf("cannot use --only-mail-rrd and --only-virus-rrd together")
+		return cfg, fmt.Errorf("cannot use rrd.only_mail and rrd.only_virus together")
 	}
 
 	return cfg, nil
-}
-
-type multiFlag []string
-
-func (m *multiFlag) String() string { return "" }
-
-func (m *multiFlag) Set(value string) error {
-	*m = append(*m, value)
-	return nil
-}
-
-func printUsage() {
-	fmt.Println(`usage: mailgraph [options]
-
-  -h, --help           display this help and exit
-  -v, --verbose        be verbose about what you do
-  -V, --version        output version information and exit
-  -c, --cat            causes the logfile to be only read and not monitored
-  -l, --logfile f      monitor logfile f instead of /var/log/syslog
-  -t, --logtype t      set logfile's type (default: syslog)
-  -y, --year           starting year of the log file (default: current year)
-      --host=HOST      use only entries for HOST (regexp) in syslog
-  -d, --daemon         start collector in the background
-  --daemon-pid=FILE    write PID to FILE instead of /var/run/mailgraph.pid
-  --daemon-rrd=DIR     write RRDs to DIR instead of /var/www/mailgraph/rrd
-  --daemon-log=FILE    write verbose-log to FILE instead of /var/log/mailgraph.log
-  --ignore-localhost   ignore mail to/from localhost (used for virus scanner)
-  --ignore-host=HOST   ignore mail to/from HOST regexp (used for virus scanner)
-  --only-mail-rrd      update only the mail rrd
-  --only-virus-rrd     update only the virus rrd
-  --rrd-name=NAME      use NAME.rrd and NAME_virus.rrd for the rrd files
-  --rbl-is-spam        count rbl rejects as spam
-  --virbl-is-virus     count virbl rejects as viruses
-      --serve          start HTTP server (default: true)
-      --listen=ADDR    HTTP listen address (default: :8080)
-      --hostname=HOST  hostname shown in graph title`)
 }

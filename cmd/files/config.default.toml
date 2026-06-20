@@ -1,0 +1,40 @@
+# Mailgraph configuration file
+# Copy to config.toml or use: mailgraph generate-config
+#
+# Priority: flags > environment variables (MAILGRAPH_*) > config file > defaults
+#
+# Environment examples:
+#   MAILGRAPH_LOG_FILE=/var/log/mail/mail.log
+#   MAILGRAPH_RRD_DIR=/var/lib/mailgraph/rrd
+#   MAILGRAPH_SERVER_LISTEN=:8080
+
+[log]
+file = "/var/log/mail/mail.log"
+type = "syslog"
+year = 2026
+host_filter = ""
+
+[rrd]
+dir = "/var/www/mailgraph/rrd"
+name = "mailgraph"
+only_mail = false
+only_virus = false
+
+[daemon]
+enabled = false
+pid_file = "/var/run/mailgraph.pid"
+log_file = "/var/log/mailgraph.log"
+
+[server]
+listen = ":8080"
+hostname = ""
+serve = true
+
+[filter]
+ignore_localhost = false
+ignore_hosts = []
+rbl_is_spam = false
+virbl_is_virus = false
+
+[app]
+verbose = false

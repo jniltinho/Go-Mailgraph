@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v5"
 
 	"github.com/davidullrich/mailgraph/internal/charts"
+	"github.com/davidullrich/mailgraph/internal/buildinfo"
 	"github.com/davidullrich/mailgraph/internal/config"
 	"github.com/davidullrich/mailgraph/internal/rrd"
 )
@@ -57,7 +58,7 @@ func (s *Server) index(c *echo.Context) error {
 		}
 	}{
 		Hostname: s.cfg.Hostname,
-		Version:  config.Version,
+		Version:  buildinfo.Version,
 	}
 
 	for i, p := range charts.Periods {

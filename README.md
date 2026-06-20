@@ -30,6 +30,7 @@ Imagem Docker: [Docker Hub — davidullrich/mailgraph](https://hub.docker.com/r/
 ## Stack
 
 - **Go** 1.26
+- **Cobra** + **Viper** — CLI e configuração (`config.toml`, variáveis de ambiente)
 - **Echo** v5 — servidor HTTP
 - **go-echarts** v2 — gráficos na web
 - **rrdtool** — armazenamento de séries temporais (runtime)
@@ -38,19 +39,112 @@ Imagem Docker: [Docker Hub — davidullrich/mailgraph](https://hub.docker.com/r/
 ## Estrutura do projeto
 
 ```
-cmd/mailgraph/          # entrypoint
+main.go                 # entrypoint
+cmd/                    # comandos Cobra (server, cat, version, generate-config)
 internal/
+  buildinfo/            # versão (ldflags)
+  config/               # carregamento Viper
   collector/            # tail do log + parsing de eventos
   syslog/               # parser syslog/metalog
   rrd/                  # create/update/fetch via rrdtool
   charts/               # geração de gráficos go-echarts
   web/                  # handlers Echo v5
-  config/               # flags CLI
+config.toml.example     # exemplo de configuração
 Dockerfile              # build multi-stage (Go + UPX → Alpine)
 Makefile                # build local, UPX, Docker
-entrypoint.sh           # entrypoint do container
+entrypoint.sh           # entrypoint do container (mailgraph server)
 mailgraph/              # scripts Perl originais (referência)
 ```
+
+---
+
+## CLI
+
+```bash
+mailgraph server           # coletor + servidor HTTP (padrão no Docker)
+mailgraph cat              # processa o log uma vez e sai
+mailgraph version          # versão e build info
+mailgraph generate-config  # gera config.toml a partir do template embutido
+mailgraph --help           # ajuda geral
+mailgraph server --help    # flags do subcomando server
+```
+
+No container, `entrypoint.sh` executa `mailgraph server` por padrão. Argumentos passados ao `docker run` substituem esse comportamento.
+
+---
+
+## Configuração
+
+Prioridade (maior → menor): **flags** > **variáveis `MAILGRAPH_*`** > **`config.toml`** > **padrões**.
+
+Arquivos de configuração procurados automaticamente:
+
+1. `./config.toml`
+2. `/etc/mailgraph/config.toml`
+3. `~/.mailgraph/config.toml`
+
+Use `--config /caminho/config.toml` para um arquivo específico.
+
+### Exemplo (`config.toml`)
+
+```toml
+[log]
+file = "/var/log/mail/mail.log"
+type = "syslog"
+year = 2026
+
+[rrd]
+dir = "/var/lib/mailgraph/rrd"
+name = "mailgraph"
+
+[server]
+listen = ":8080"
+hostname = "mail.example.com"
+
+[filter]
+ignore_localhost = true
+```
+
+Copie `config.toml.example` ou gere um arquivo com:
+
+```bash
+mailgraph generate-config
+```
+
+### Variáveis de ambiente
+
+| Variável | Equivalente em `config.toml` |
+|----------|------------------------------|
+| `MAILGRAPH_LOG_FILE` | `log.file` |
+| `MAILGRAPH_LOG_TYPE` | `log.type` |
+| `MAILGRAPH_LOG_YEAR` | `log.year` |
+| `MAILGRAPH_RRD_DIR` | `rrd.dir` |
+| `MAILGRAPH_SERVER_LISTEN` | `server.listen` |
+| `MAILGRAPH_SERVER_HOSTNAME` | `server.hostname` |
+| `MAILGRAPH_FILTER_IGNORE_LOCALHOST` | `filter.ignore_localhost` |
+| `MAILGRAPH_APP_VERBOSE` | `app.verbose` |
+
+### Flags principais (`server` e `cat`)
+
+```bash
+mailgraph server \
+  --logfile=/var/log/mail/mail.log \
+  --daemon-rrd=/var/lib/mailgraph/rrd \
+  --hostname=mail.example.com \
+  --ignore-localhost \
+  --listen=127.0.0.1:8080
+```
+
+| Flag | Descrição |
+|------|-----------|
+| `--logfile` | Arquivo de log syslog do Postfix |
+| `--daemon-rrd` | Diretório dos arquivos `.rrd` |
+| `--listen` | Endereço HTTP (padrão `:8080`) |
+| `--hostname` | Nome exibido no título dos gráficos |
+| `--ignore-localhost` | Ignora tráfego de/para `127.0.0.1` |
+| `--ignore-host` | Ignora host (regex, repetível) |
+| `--verbose` | Saída detalhada |
+| `--daemon` | Grava PID e desanexa do terminal |
 
 ---
 
@@ -69,6 +163,7 @@ mailgraph/              # scripts Perl originais (referência)
 make deps          # baixar módulos Go
 make build         # binário em bin/mailgraph
 make build-prod    # build + UPX (--best --lzma)
+make run           # build + mailgraph server (teste local)
 make test          # go test ./...
 make help          # lista completa
 ```
@@ -83,28 +178,8 @@ make build-prod
 Verificar versão:
 
 ```bash
-./bin/mailgraph --version
+./bin/mailgraph version
 ```
-
-### Flags principais
-
-```bash
-mailgraph \
-  --logfile=/var/log/mail/mail.log \
-  --daemon-rrd=/var/lib/mailgraph/rrd \
-  --hostname=mail.example.com \
-  --ignore-localhost \
-  --listen=127.0.0.1:8080
-```
-
-| Flag | Descrição |
-|------|-----------|
-| `--logfile` | Arquivo de log syslog do Postfix |
-| `--daemon-rrd` | Diretório dos arquivos `.rrd` |
-| `--listen` | Endereço HTTP (padrão `:8080`) |
-| `--ignore-localhost` | Ignora tráfego de/para `127.0.0.1` |
-| `-c` / `--cat` | Processa o log uma vez e sai |
-| `--help` | Ajuda completa |
 
 ---
 
@@ -125,6 +200,19 @@ docker run --rm -d \
 ```
 
 Gráficos: **http://localhost:8080/mailgraph/**
+
+Configuração opcional via arquivo ou ambiente:
+
+```bash
+docker run --rm -d \
+  --name mailgraph \
+  -v /var/log/mail/mail.log:/var/log/mail/mail.log:ro \
+  -v /var/data/mailgraph/rrd:/var/www/mailgraph/rrd \
+  -v /etc/mailgraph/config.toml:/etc/mailgraph/config.toml:ro \
+  -e MAILGRAPH_SERVER_HOSTNAME=mail.example.com \
+  -p 8080:8080 \
+  davidullrich/mailgraph:latest
+```
 
 Tag customizada:
 

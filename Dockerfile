@@ -18,10 +18,10 @@ COPY . .
 RUN BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) && \
     CGO_ENABLED=0 go build -trimpath \
     -ldflags "-s -w \
-    -X github.com/davidullrich/mailgraph/internal/config.Version=${VERSION} \
-    -X github.com/davidullrich/mailgraph/internal/config.BuildDate=${BUILD_DATE} \
-    -X github.com/davidullrich/mailgraph/internal/config.GitCommit=${GIT_COMMIT}" \
-    -o bin/mailgraph ./cmd/mailgraph && \
+    -X github.com/davidullrich/mailgraph/internal/buildinfo.Version=${VERSION} \
+    -X github.com/davidullrich/mailgraph/internal/buildinfo.BuildDate=${BUILD_DATE} \
+    -X github.com/davidullrich/mailgraph/internal/buildinfo.GitCommit=${GIT_COMMIT}" \
+    -o bin/mailgraph . && \
     upx --best --lzma bin/mailgraph
 
 # Stage 2: Final minimal image
@@ -35,9 +35,10 @@ WORKDIR /app
 
 COPY --from=go-builder /app/bin/mailgraph /usr/local/bin/mailgraph
 COPY entrypoint.sh /app/entrypoint.sh
+COPY config.toml.example /etc/mailgraph/config.toml.example
 
 RUN chmod +x /app/entrypoint.sh && \
-    mkdir -p /var/www/mailgraph/rrd
+    mkdir -p /var/www/mailgraph/rrd /etc/mailgraph
 
 VOLUME ["/var/log/mail/mail.log", "/var/www/mailgraph/rrd"]
 

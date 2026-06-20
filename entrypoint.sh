@@ -1,12 +1,12 @@
 #!/bin/sh
 
 if [ "$#" -gt 0 ]; then
-	exec "$@"
+	exec /usr/local/bin/mailgraph "$@"
 fi
 
 echo "Starting mailgraph (Go).."
 
-exec /usr/local/bin/mailgraph \
+exec /usr/local/bin/mailgraph server \
 	--logfile=/var/log/mail/mail.log \
 	--daemon-rrd=/var/www/mailgraph/rrd \
 	--listen=:8080

@@ -76,7 +76,7 @@ Jun 20 10:00:01 mail.example.com postfix/smtpd[1234]: ABCD: client=unknown[203.0
 | syslog geral | `/var/log/syslog` ou `/var/log/messages` |
 | journald apenas | configure rsyslog ou redirecione para arquivo (recomendado) |
 
-Se usar outro caminho, passe `--logfile` na execução.
+Se usar outro caminho, ajuste `log.file` em `config.toml` ou passe `--logfile` ao subcomando `server`.
 
 ---
 
@@ -92,11 +92,13 @@ sudo apt install -y rrdtool git
 ### 2.2 Compilar
 
 ```bash
-git clone https://github.com/<seu-usuario>/MailgraphContainer.git
+git clone https://github.com/jniltinho/MailgraphContainer.git
 cd MailgraphContainer
 
-go build -trimpath -ldflags="-s -w" -o mailgraph ./cmd/mailgraph/
-sudo install -m 755 mailgraph /usr/local/bin/mailgraph
+make build
+# ou: go build -trimpath -ldflags="-s -w" -o mailgraph .
+
+sudo install -m 755 bin/mailgraph /usr/local/bin/mailgraph
 ```
 
 ### 2.3 Diretórios de dados
@@ -108,16 +110,53 @@ sudo chown mailgraph:mailgraph /var/lib/mailgraph/rrd 2>/dev/null || sudo chown 
 
 Na primeira execução, se não existir RRD, o histórico atual de `/var/log/mail/mail.log` é processado automaticamente.
 
+### 2.4 Arquivo de configuração (recomendado)
+
+```bash
+sudo mkdir -p /etc/mailgraph
+sudo mailgraph generate-config
+sudo cp config_*.toml /etc/mailgraph/config.toml
+sudo nano /etc/mailgraph/config.toml
+```
+
+Exemplo para Postfix em produção:
+
+```toml
+[log]
+file = "/var/log/mail/mail.log"
+type = "syslog"
+year = 2026
+
+[rrd]
+dir = "/var/lib/mailgraph/rrd"
+name = "mailgraph"
+
+[server]
+listen = "127.0.0.1:8080"
+hostname = "mail.example.com"
+
+[filter]
+ignore_localhost = true
+```
+
+Prioridade: flags > `MAILGRAPH_*` > `config.toml` > padrões. Ver [README.md](README.md#configuração) para a lista completa.
+
 ---
 
 ## 3. Executar manualmente (teste)
 
 ```bash
-sudo mailgraph \
+sudo mailgraph server \
   --logfile=/var/log/mail/mail.log \
   --daemon-rrd=/var/lib/mailgraph/rrd \
   --hostname=$(hostname -f) \
   --listen=127.0.0.1:8080
+```
+
+Com `config.toml` em `/etc/mailgraph/`:
+
+```bash
+sudo mailgraph server
 ```
 
 Abra no navegador (via SSH tunnel ou proxy):
@@ -129,28 +168,28 @@ http://127.0.0.1:8080/mailgraph/
 ### Importar log histórico sem subir o servidor web
 
 ```bash
-sudo mailgraph -c \
+sudo mailgraph cat \
   --logfile=/var/log/mail/mail.log \
   --daemon-rrd=/var/lib/mailgraph/rrd \
   --year=$(date +%Y) \
-  -v
+  --verbose
 ```
 
 ### Opções úteis em Postfix
 
-| Flag | Quando usar |
-|------|-------------|
-| `--ignore-localhost` | Ignora tráfego de/para `127.0.0.1` (scanners locais, Amavis em loopback) |
-| `--ignore-host=HOST` | Ignora relay de um host específico (regex, repetível) |
-| `--rbl-is-spam` | Conta rejeições RBL como spam |
-| `--virbl-is-virus` | Conta rejeições VIRBL como vírus |
-| `--host=mail.example.com` | Filtra apenas entradas de um hostname no syslog |
-| `--listen=127.0.0.1:8080` | Escuta só em localhost (mais seguro) |
+| Flag / config | Quando usar |
+|---------------|-------------|
+| `--ignore-localhost` / `filter.ignore_localhost` | Ignora tráfego de/para `127.0.0.1` (scanners locais, Amavis em loopback) |
+| `--ignore-host=HOST` / `filter.ignore_hosts` | Ignora relay de um host específico (regex, repetível) |
+| `--rbl-is-spam` / `filter.rbl_is_spam` | Conta rejeições RBL como spam |
+| `--virbl-is-virus` / `filter.virbl_is_virus` | Conta rejeições VIRBL como vírus |
+| `--host=mail.example.com` / `log.host_filter` | Filtra apenas entradas de um hostname no syslog |
+| `--listen=127.0.0.1:8080` / `server.listen` | Escuta só em localhost (mais seguro) |
 
 Exemplo com Amavis em localhost:
 
 ```bash
-sudo mailgraph \
+sudo mailgraph server \
   --logfile=/var/log/mail/mail.log \
   --daemon-rrd=/var/lib/mailgraph/rrd \
   --ignore-localhost \
@@ -174,17 +213,24 @@ Wants=rsyslog.service
 Type=simple
 User=root
 Group=root
-ExecStart=/usr/local/bin/mailgraph \
-  --logfile=/var/log/mail/mail.log \
-  --daemon-rrd=/var/lib/mailgraph/rrd \
-  --hostname=mail.example.com \
-  --ignore-localhost \
-  --listen=127.0.0.1:8080
+ExecStart=/usr/local/bin/mailgraph server \
+  --config /etc/mailgraph/config.toml
 Restart=on-failure
 RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
+```
+
+Alternativa sem arquivo de config (flags inline):
+
+```ini
+ExecStart=/usr/local/bin/mailgraph server \
+  --logfile=/var/log/mail/mail.log \
+  --daemon-rrd=/var/lib/mailgraph/rrd \
+  --hostname=mail.example.com \
+  --ignore-localhost \
+  --listen=127.0.0.1:8080
 ```
 
 Substitua `mail.example.com` pelo FQDN do seu servidor.
@@ -218,6 +264,19 @@ docker run --rm -d \
   -v /var/log/mail/mail.log:/var/log/mail/mail.log:ro \
   -v /var/lib/mailgraph/rrd:/var/www/mailgraph/rrd \
   -v /etc/localtime:/etc/localtime:ro \
+  -p 127.0.0.1:8080:8080 \
+  davidullrich/mailgraph:latest
+```
+
+O entrypoint do container executa `mailgraph server` automaticamente. Para sobrescrever:
+
+```bash
+docker run --rm -d \
+  --name mailgraph \
+  -v /var/log/mail/mail.log:/var/log/mail/mail.log:ro \
+  -v /var/lib/mailgraph/rrd:/var/www/mailgraph/rrd \
+  -e MAILGRAPH_SERVER_HOSTNAME=mail.example.com \
+  -e MAILGRAPH_FILTER_IGNORE_LOCALHOST=true \
   -p 127.0.0.1:8080:8080 \
   davidullrich/mailgraph:latest
 ```
@@ -308,12 +367,12 @@ Envie um e-mail de teste (entrada e saída) e aguarde 1–2 minutos; os gráfico
 
 1. Confirme que `/var/log/mail/mail.log` recebe linhas `postfix/...`
 2. Verifique permissão de leitura do usuário que roda o Mailgraph
-3. Processe o log manualmente com `-c -v` e observe erros de `rrdtool`
+3. Processe o log manualmente com `mailgraph cat --verbose` e observe erros de `rrdtool`
 4. Confirme que `rrdtool` está instalado: `which rrdtool`
 
 ### RRD parou de atualizar
 
-- Timestamps no log não podem retroceder (ajuste de relógio ou ano errado → use `--year`)
+- Timestamps no log não podem retroceder (ajuste de relógio ou ano errado → use `--year` ou `log.year`)
 - Inspecione o último timestamp: `rrdtool last /var/lib/mailgraph/rrd/mailgraph.rrd`
 
 ### Só aparece tráfego enviado, nada recebido
@@ -327,7 +386,7 @@ Envie um e-mail de teste (entrada e saída) e aguarde 1–2 minutos; os gráfico
 
 ### Porta 8080 exposta na internet
 
-- Prefira `--listen=127.0.0.1:8080` + Nginx/Traefik com TLS e autenticação
+- Prefira `server.listen = "127.0.0.1:8080"` + Nginx/Traefik com TLS e autenticação
 - Não exponha estatísticas de e-mail publicamente sem proteção
 
 ---
@@ -337,18 +396,25 @@ Envie um e-mail de teste (entrada e saída) e aguarde 1–2 minutos; os gráfico
 ```bash
 # Ajuda
 mailgraph --help
+mailgraph server --help
 
 # Versão
-mailgraph --version
+mailgraph version
 
 # Rodar em foreground (debug)
-sudo mailgraph -v \
+sudo mailgraph server --verbose \
   --logfile=/var/log/mail/mail.log \
   --daemon-rrd=/var/lib/mailgraph/rrd \
   --listen=127.0.0.1:8080
 
 # Reprocessar log inteiro (sem servidor web)
-sudo mailgraph -c --logfile=/var/log/mail/mail.log --daemon-rrd=/var/lib/mailgraph/rrd -v
+sudo mailgraph cat \
+  --logfile=/var/log/mail/mail.log \
+  --daemon-rrd=/var/lib/mailgraph/rrd \
+  --verbose
+
+# Gerar config.toml
+mailgraph generate-config
 ```
 
 ---
