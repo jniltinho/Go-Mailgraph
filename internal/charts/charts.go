@@ -45,6 +45,9 @@ func PeriodIndex(slug string) (int, bool) {
 }
 
 const (
+	chartWidth  = "1080px"
+	chartHeight = "280px"
+
 	// TypeTraffic is the sent/received traffic chart.
 	TypeTraffic = "n"
 	// TypeErrors is the bounced, rejected, virus, and spam chart.
@@ -132,7 +135,7 @@ func (g *Generator) renderTraffic(period Period) (string, error) {
 	}
 
 	labels, series := buildSeries(points, period, "sent", "recv")
-	line := baseLine(period.Title, "msgs/min", labels)
+	line := baseLine(period, "msgs/min", labels, period.Title)
 	line.AddSeries("Sent", series[0],
 		charts.WithAreaStyleOpts(opts.AreaStyle{Color: colors["sent"]}),
 		charts.WithLineStyleOpts(opts.LineStyle{Color: colors["sent"]}),
@@ -161,7 +164,7 @@ func (g *Generator) renderErrors(period Period) (string, error) {
 		labels = labelsFrom(virusPts, period)
 	}
 
-	line := baseLine(period.Title+" - Errors", "msgs/min", labels)
+	line := baseLine(period, "msgs/min", labels, period.Title+" - Errors")
 	line.AddSeries("Bounced", valuesFor(mailPts, "bounced"),
 		charts.WithAreaStyleOpts(opts.AreaStyle{Color: colors["bounced"]}),
 		charts.WithLineStyleOpts(opts.LineStyle{Color: colors["bounced"]}),
@@ -202,7 +205,7 @@ func (g *Generator) renderDovecot(period Period) (string, error) {
 	}
 
 	labels, series := buildSeries(points, period, "dovecotloginsuccess", "dovecotloginfailed")
-	line := baseLine(period.Title+" - Dovecot", "logins/min", labels)
+	line := baseLine(period, "logins/min", labels, period.Title+" - Dovecot")
 	line.AddSeries("Dovecot logins successful", series[0],
 		charts.WithAreaStyleOpts(opts.AreaStyle{Color: colors["dovecotloginsuccess"]}),
 		charts.WithLineStyleOpts(opts.LineStyle{Color: colors["dovecotloginsuccess"]}),
@@ -223,7 +226,7 @@ func (g *Generator) renderTriple(path string, period Period, title, yLabel, k1, 
 	}
 
 	labels, series := buildSeries(points, period, k1, k2, k3)
-	line := baseLine(title, yLabel, labels)
+	line := baseLine(period, yLabel, labels, title)
 	line.AddSeries(n1, series[0],
 		charts.WithAreaStyleOpts(opts.AreaStyle{Color: colors[k1]}),
 		charts.WithLineStyleOpts(opts.LineStyle{Color: colors[k1]}),
@@ -238,25 +241,37 @@ func (g *Generator) renderTriple(path string, period Period, title, yLabel, k1, 
 	return renderChart(line)
 }
 
-func baseLine(title, yLabel string, labels []string) *charts.Line {
+func baseLine(period Period, yLabel string, labels []string, title string) *charts.Line {
 	line := charts.NewLine()
 	line.SetXAxis(labels)
 	line.SetGlobalOptions(
-		charts.WithInitializationOpts(opts.Initialization{Width: "900px", Height: "200px"}),
+		charts.WithInitializationOpts(opts.Initialization{Width: chartWidth, Height: chartHeight}),
 		charts.WithTitleOpts(opts.Title{Title: title, Left: "center"}),
 		charts.WithTooltipOpts(opts.Tooltip{Show: opts.Bool(true), Trigger: "axis"}),
 		charts.WithLegendOpts(opts.Legend{Show: opts.Bool(true), Top: "bottom"}),
-		charts.WithGridOpts(opts.Grid{Left: "3%", Right: "4%", Bottom: "15%", ContainLabel: opts.Bool(true)}),
+		charts.WithGridOpts(opts.Grid{Left: "3%", Right: "4%", Bottom: "18%", Top: "12%", ContainLabel: opts.Bool(true)}),
 		charts.WithXAxisOpts(opts.XAxis{
-			Type: "category",
-			AxisLabel: &opts.AxisLabel{
-				Rotate:      45,
-				HideOverlap: opts.Bool(true),
-			},
+			Type:      "category",
+			AxisLabel: xAxisLabelOpts(period),
 		}),
 		charts.WithYAxisOpts(opts.YAxis{Name: yLabel, Type: "value", Min: opts.Float(0)}),
 	)
 	return line
+}
+
+func xAxisLabelOpts(period Period) *opts.AxisLabel {
+	label := &opts.AxisLabel{
+		Rotate:      45,
+		HideOverlap: opts.Bool(true),
+	}
+	if period.Slug == "last-week" || period.Slug == "last-2-weeks" {
+		// Sparse day labels sit on a dense category axis; ECharts hides most of them by default.
+		label.HideOverlap = opts.Bool(false)
+		label.Interval = "0"
+		label.ShowMinLabel = opts.Bool(true)
+		label.ShowMaxLabel = opts.Bool(true)
+	}
+	return label
 }
 
 func formatAxisLabel(period Period, t time.Time) string {
@@ -335,7 +350,7 @@ func renderChart(line *charts.Line) (string, error) {
 func emptyChart(title, yLabel, message string) string {
 	line := charts.NewLine()
 	line.SetGlobalOptions(
-		charts.WithInitializationOpts(opts.Initialization{Width: "900px", Height: "200px"}),
+		charts.WithInitializationOpts(opts.Initialization{Width: chartWidth, Height: chartHeight}),
 		charts.WithTitleOpts(opts.Title{Title: title, Subtitle: message, Left: "center"}),
 		charts.WithYAxisOpts(opts.YAxis{Name: yLabel, Min: opts.Float(0)}),
 	)
