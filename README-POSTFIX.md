@@ -148,7 +148,7 @@ realm = "Mailgraph"
 ignore_localhost = true
 ```
 
-Priority: flags > `MAILGRAPH_*` > `config.toml` > defaults. See [README.md](README.md#configuration) for the full list.
+Priority: flags > `MAILGRAPH_*` > `config.toml` > defaults. See [docs/README.md](docs/README.md#configuration) for the full list.
 
 ---
 
@@ -544,5 +544,6 @@ mailgraph generate-config
 ## Links
 
 - [Original Mailgraph](https://mailgraph.schweikert.ch/)
-- [Docker README](README.md) — general container usage
+- [Project README](README.md) — overview and quick start
+- [Full documentation](docs/README.md) — configuration, build, Docker
 - SPF/DMARC/DKIM patch: [kernel-error.de](https://www.kernel-error.de/2014/04/22/mailgraph-graphen-um-spf-dmarc-und-dkim-erweitern/)
