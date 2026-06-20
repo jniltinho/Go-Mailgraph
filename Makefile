@@ -19,7 +19,7 @@ LDFLAGS := -trimpath -ldflags "-s -w \
 	-X $(PKG).BuildDate=$(BUILD_TIME) \
 	-X $(PKG).GitCommit=$(GIT_COMMIT)"
 
-.PHONY: all build build-prod run clean deps tidy test install-upx build-docker help
+.PHONY: all build build-prod run clean deps tidy test install-upx build-docker certs help
 
 all: clean build
 
@@ -71,6 +71,13 @@ build-docker:
 		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
 		-t $(IMAGE) .
 
+certs:
+	@echo "Generating SSL certificates..."
+	mkdir -p ssl
+	openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+		-keyout ssl/server.key -out ssl/server.crt \
+		-subj "/C=BR/ST=SP/L=Sao Paulo/O=Development/CN=localhost"
+
 help:
 	@echo "Makefile commands:"
 	@echo "  build         - Build Go binary (trimpath + ldflags)"
@@ -81,7 +88,9 @@ help:
 	@echo "  clean         - Remove bin/$(APP)"
 	@echo "  deps / tidy   - Go module download / cleanup"
 	@echo "  install-upx   - Install UPX compressor"
+	@echo "  certs         - Generate self-signed TLS certs in ssl/"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make build-prod"
 	@echo "  make build-docker IMAGE=jniltinho/mailgraph:latest"
+	@echo "  make certs"

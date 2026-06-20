@@ -222,6 +222,17 @@ Combine com TLS para expor publicamente com mais segurança.
 
 ### HTTPS com TLS
 
+Para testes locais:
+
+```bash
+make certs
+sudo mailgraph server \
+  --listen=:8443 \
+  --tls \
+  --tls-cert=ssl/server.crt \
+  --tls-key=ssl/server.key
+```
+
 Exemplo com certificado Let's Encrypt:
 
 ```toml

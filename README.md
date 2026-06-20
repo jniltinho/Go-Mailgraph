@@ -138,7 +138,22 @@ mailgraph server \
 
 ### HTTPS (TLS)
 
-Com certificado PEM (ex.: Let's Encrypt):
+Para testes locais, gere certificado autoassinado:
+
+```bash
+make certs
+# ssl/server.crt  ssl/server.key
+```
+
+```bash
+mailgraph server \
+  --listen=:8443 \
+  --tls \
+  --tls-cert=ssl/server.crt \
+  --tls-key=ssl/server.key
+```
+
+Em produção, use certificado PEM (ex.: Let's Encrypt):
 
 ```toml
 [server]
